@@ -1,6 +1,6 @@
 ---
 name: code-review-self
-description: Use before opening a PR to self-review the diff. Triggers on "review my changes", "before pr", "self review", "проверь мои изменения". Performs structured review covering correctness, tests, security, docs, and produces a blocker/nit/question report.
+description: Самопроверка изменений перед открытием PR. Триггеры — "проверь мои изменения", "self review", "ревью перед PR", "review my changes", "before pr". Делает структурированное ревью по корректности, тестам, безопасности и документации, выдаёт отчёт blocker/nit/question.
 argument-hint: '[<base-branch=origin/main>]'
 allowedTools:
   - read_file
@@ -9,40 +9,43 @@ allowedTools:
   - shell
 ---
 
-# Self code review
+# Самопроверка перед PR
 
-Pre-PR review of the current working branch against a base branch.
+Ревью текущей рабочей ветки относительно базовой.
 
-## Inputs
+## Вход
 
-- `args` (optional): base branch. Default `origin/main`.
+- `args` (опционально): базовая ветка. По умолчанию `origin/main`.
 
-## Steps
+## Шаги
 
-1. Resolve diff range: `git fetch <base-remote>` then
-   `git diff <base>...HEAD --stat` and `git diff <base>...HEAD`.
-2. Build a file list and a short summary (purpose, scope, risk).
-3. **Delegate four checks** (see `## Delegation` below) — in parallel
-   if the runtime supports it.
-4. Aggregate subagent reports. Drop duplicates. Keep severity in each item.
-5. Output a final report in the format under `## Output`.
+1. Определить диапазон diff: `git fetch <base-remote>`, затем
+   `git diff <base>...HEAD --stat` и `git diff <base>...HEAD`.
+2. Составить список изменённых файлов и краткое summary (цель, объём,
+   риск).
+3. **Делегировать четыре проверки** (см. раздел `## Делегирование`) —
+   параллельно, если runtime поддерживает.
+4. Свести отчёты субагентов: убрать дубликаты, сохранить severity у
+   каждого пункта.
+5. Вернуть итоговый отчёт в формате из `## Вывод`.
 
-## Delegation
+## Делегирование
 
-Spin up **named** subagents — they return structured reports back to this
-skill. Run them **in parallel** when the runtime allows; the four areas are
-independent and benefit from isolated context.
+Запустить **named** субагентов — они возвращают структурированные
+отчёты в этот skill. Запускать **параллельно**, когда runtime это
+поддерживает: четыре области независимы и выигрывают от изоляции
+контекста.
 
-| Subagent | Scope | Why isolated |
+| Субагент | Зона | Почему изолирован |
 |---|---|---|
-| `correctness-reviewer` | Logic bugs, edge cases, error paths, off-by-one, concurrency | Largest context — own session keeps main clean |
-| `tests-reviewer` | Coverage of new/changed behavior, brittle tests, missing negative cases | Different mental model; reads test files only |
-| `security-reviewer` | Secrets, injection, authz, unsafe deserialization, dep risks | Separate checklist; benefits from read-only mode |
-| `docs-reviewer` | Public API changes, README/CHANGELOG, comments WHY vs WHAT | Tiny scope, trivially parallelizable |
+| `correctness-reviewer` | Логические ошибки, edge cases, обработка ошибок, off-by-one, конкурентность | Большой контекст — отдельная сессия не засоряет основную |
+| `tests-reviewer` | Покрытие нового/изменённого поведения, хрупкие тесты, отсутствие негативных кейсов | Другая ментальная модель, читает только тесты |
+| `security-reviewer` | Секреты, injection, авторизация, небезопасная десериализация, риски зависимостей | Отдельный чек-лист, выгоден read-only режим |
+| `docs-reviewer` | Изменения публичного API, README/CHANGELOG, комментарии WHY vs WHAT | Маленький объём, легко параллелится |
 
-For each subagent send: the diff range, the changed-files list, and a
-focused prompt with the scope above. Require each to answer in the same
-JSON shape:
+Каждому субагенту передать: диапазон diff, список изменённых файлов и
+сфокусированный промпт под его зону. Каждый возвращает в одинаковом
+JSON-формате:
 
 ```json
 {
@@ -52,31 +55,32 @@ JSON shape:
 }
 ```
 
-Skip a subagent only if its scope is clearly empty (e.g. no test files
-touched and no behavior changes — skip `tests-reviewer`).
+Пропускать субагента можно только если его зона очевидно пуста
+(например, не тронуты тестовые файлы и нет изменений поведения —
+пропустить `tests-reviewer`).
 
-## Output
+## Вывод
 
 ```
-## Self review of <branch> vs <base>
+## Самопроверка <branch> относительно <base>
 
 ### Summary
-- Files changed: N
-- Risk: low|medium|high
-- One-line purpose
+- Изменено файлов: N
+- Риск: low|medium|high
+- Цель одной строкой
 
 ### Blockers
-- file:line — message
+- file:line — сообщение
 
 ### Nits
-- file:line — message
+- file:line — сообщение
 
 ### Questions
-- file:line — message
+- file:line — сообщение
 ```
 
-## Notes
+## Замечания
 
-- Do **not** edit code in this skill — review only.
-- If any subagent fails, surface the failure as a question, do not silently
-  drop its area.
+- В этом skill'е **не редактировать** код — только ревью.
+- Если субагент упал — отразить это как question, а не молча выкинуть
+  его область.
