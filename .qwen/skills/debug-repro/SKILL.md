@@ -1,7 +1,7 @@
 ---
 name: debug-repro
-description: Build a minimal reproducible example for a bug. Triggers on "minimal repro", "isolate the bug", "reproduce this", "собери репро". Produces a self-contained script or test that fails deterministically.
-argument-hint: '<bug-description-or-issue-link>'
+description: Собрать минимальный воспроизводимый пример для бага. Триггеры — "минимальный repro", "собери репро", "isolate the bug", "minimal repro", "воспроизведи баг". Возвращает самодостаточный скрипт или тест, детерминированно падающий на баге.
+argument-hint: '<описание-бага-или-ссылка-на-issue>'
 allowedTools:
   - read_file
   - glob
@@ -10,46 +10,49 @@ allowedTools:
   - write_file
 ---
 
-# Minimal reproducible example
+# Минимальный воспроизводимый пример
 
-Reduce a bug report to the smallest deterministic failing case.
+Свести баг-репорт к минимальному детерминированному падающему случаю.
 
-## Inputs
+## Вход
 
-- `args`: free-form bug description, stack trace, or link to issue.
+- `args`: свободное описание бага, стектрейс или ссылка на issue.
 
-## Steps
+## Шаги
 
-1. **Parse the report**: extract symptom, expected, suspected component,
-   environment hints (versions, OS, env vars).
-2. **Delegate context research in parallel** (see `## Delegation`). While
-   subagents work, prepare the repro skeleton (`.qwen/scratch/repro/`).
-3. **Build the repro**:
-   - one file if possible (script, single test, single curl);
-   - hardcode all inputs; remove network/external state;
-   - include exact commands to run.
-4. **Run it**. Iterate until it fails reliably **on a fresh shell**
-   (cleared env, clean working tree).
-5. **Reduce**: delete code/inputs and re-run after each cut. Stop when
-   removing anything makes the bug disappear.
-6. **Document**: write `REPRO.md` next to the script with: command,
-   expected, actual, environment, version pins.
+1. **Распарсить отчёт**: выделить симптом, ожидаемое поведение,
+   подозреваемый компонент, подсказки об окружении (версии, OS,
+   env-переменные).
+2. **Делегировать исследование контекста параллельно** (см. раздел
+   `## Делегирование`). Пока субагенты работают — подготовить скелет
+   repro в `.qwen/scratch/repro/`.
+3. **Собрать repro**:
+   - по возможности один файл (скрипт, единственный тест, один curl);
+   - захардкодить все входы; убрать сеть и внешнее состояние;
+   - привести точные команды запуска.
+4. **Запустить.** Итерировать, пока он не начнёт стабильно падать в
+   **чистом shell** (очищенное окружение, чистое рабочее дерево).
+5. **Сократить.** Удалять код/входы и перезапускать после каждого среза.
+   Останавливаться, когда удаление чего-либо «чинит» баг.
+6. **Задокументировать.** Положить рядом со скриптом `REPRO.md`:
+   команда запуска, ожидаемое, фактическое, окружение, версии.
 
-## Delegation
+## Делегирование
 
-Two subagents, both **read-only and named**, run **in parallel** — they
-explore independent areas and return small structured reports, so the
-main skill can focus on building/reducing the repro.
+Два субагента, оба **read-only и named**, запустить **параллельно** —
+они исследуют независимые области и возвращают короткие
+структурированные отчёты, чтобы основной skill сосредоточился на сборке
+и сокращении repro.
 
-| Subagent | Task | Why parallel & isolated |
+| Субагент | Задача | Почему параллельно и изолированно |
 |---|---|---|
-| `bug-history-scout` | `git log -S`, `git log --grep`, recent commits to suspected files; related closed issues / PRs (via `shell` + `gh` or available MCP) | Large search surface; produces a short list of "looked at this before" pointers |
-| `env-probe` | Versions of language/runtime/deps, lockfile state, OS, relevant env vars, container/sandbox hints | Independent of git history; needs different tools and avoids polluting history search |
+| `bug-history-scout` | `git log -S`, `git log --grep`, недавние коммиты в подозреваемых файлах; связанные closed issues / PRs (через `shell` + `gh` или доступный MCP) | Большая поверхность поиска, выдаёт короткий список «уже видели такое»-указателей |
+| `env-probe` | Версии runtime/языка/зависимостей, состояние lockfile, OS, релевантные env-переменные, контейнер/sandbox | Независим от истории, нужны другие инструменты, не засоряет историю поиска |
 
-If one of the two areas is irrelevant to the report (e.g. pure-logic bug
-with no env angle) — skip that subagent.
+Если одна из областей очевидно нерелевантна (например, чисто-логический
+баг без угла окружения) — пропустить соответствующего субагента.
 
-Each subagent must return:
+Каждый субагент возвращает:
 
 ```json
 {
@@ -57,22 +60,22 @@ Each subagent must return:
 }
 ```
 
-Do **not** delegate the actual reduction — it is iterative and depends on
-running the repro after each cut, so a single sequential agent (this
-skill) is faster.
+**Не** делегировать само сокращение — оно итеративное и зависит от
+запуска repro после каждого среза, поэтому одиночный последовательный
+агент (этот skill) быстрее.
 
-## Output
+## Вывод
 
-A directory under `.qwen/scratch/repro/<short-slug>/` containing:
+Директория `.qwen/scratch/repro/<short-slug>/`, в которой:
 
-- the failing script/test,
-- `REPRO.md` with run instructions, expected vs actual, environment,
-- a one-paragraph summary in chat with the path and the failing command.
+- падающий скрипт/тест,
+- `REPRO.md` с командой запуска, ожидаемое vs фактическое, окружением,
+- однопараграфный summary в чате с путём и падающей командой.
 
-## Notes
+## Замечания
 
-- Never include real secrets in the repro — replace with placeholders.
-- If the bug needs network — record a fixture (e.g. saved response) and
-  replay locally; the goal is determinism.
-- Stop reducing once the repro is < ~50 lines or further cuts hide the
-  bug — diminishing returns.
+- Никогда не вставлять реальные секреты в repro — заменять placeholder'ом.
+- Если багу нужна сеть — записать фикстуру (например, сохранённый
+  ответ) и проигрывать локально; цель — детерминизм.
+- Останавливать сокращение, когда repro < ~50 строк или дальнейшие
+  срезы скрывают баг — diminishing returns.
