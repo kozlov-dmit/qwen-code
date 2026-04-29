@@ -1,0 +1,63 @@
+# 3. Best practices
+
+Сводный список — каждое правило с одной-двумя строками обоснования.
+
+## Skills
+
+1. **Skill = одна капабилити.** В `description` пишите явные триггеры и
+   ключевые слова — именно по ним модель решает подгружать skill.
+2. **Короткий `SKILL.md`** (как ориентир — не длиннее ~500 строк). Большие
+   справочники и шаблоны — в `reference.md`, `examples.md`, `scripts/`,
+   `templates/`. Это «прогрессивное раскрытие».
+3. **Markdown > deprecated TOML** для команд внутри skills и extensions.
+
+## Extensions
+
+4. **Всегда фиксируйте `version`** в `qwen-extension.json`.
+5. **Секреты через `settings[]` с `sensitive: true`** — пользователь введёт
+   их при установке, и они попадут в `~/.qwen/.env` или `.qwen/.env`. В
+   `settings.json` секреты класть не стоит.
+6. **Не дублируйте MCP-сервера** — если они уже есть в `settings.json`,
+   приоритет за ним; extension-версия будет проигнорирована.
+
+## MCP
+
+7. **`trust: true`** — только для локального и проверенного кода. Для всего
+   остального оставляйте подтверждения и используйте
+   `includeTools` / `excludeTools`, чтобы сузить поверхность атаки.
+8. **Префикс `<server>__<tool>`** — закладывайте в имена tool-ов в
+   документации, чтобы не путаться.
+
+## Permissions и approval
+
+9. **`deny` сильнее `allow`.** Минимальный безопасный baseline:
+   `Bash(rm -rf *)`, `Bash(curl *)`, `Read(.env)`, `Read(**/secrets/**)`
+   — в `deny`.
+10. **Approval-mode под задачу.** `plan` — для аудита и архитектурных
+    решений; `auto-edit` — для повседневной разработки; `yolo` — только в
+    Docker/podman-sandbox или CI.
+
+## Memory / QWEN.md
+
+11. **`QWEN.md` — короткий и со ссылками** (`@docs/style.md`,
+    `@.qwen/design/...`), а не монолит. Дробите по подкаталогам — каждый
+    модуль свой контекст.
+12. **`context.fileName: ["QWEN.md", "AGENTS.md"]`** — один и тот же файл
+    правил подхватывают и Claude Code, и Gemini CLI. Не плодите дубли.
+
+## SubAgents
+
+13. **Subagent — одна ответственность.** Стилистика `AGENTS.md` qwen-code:
+    `test-engineer`, code-reviewer, debugger; `description` — actionable,
+    чтобы main-агент правильно делегировал.
+
+## Шаринг и поддержка
+
+14. **Шарьте через `.qwen/`**: `skills/`, `agents/`, `commands/`, `QWEN.md`,
+    `settings.json` (без секретов) — в git. Команда сразу получает рабочее
+    окружение.
+15. **Регулярно `qwen extensions update --all`** и проверка `/mcp`,
+    `/skills`, `/agents` — особенно после обновлений qwen.
+16. **`/stats` и `/compress`** — следите за токенами длинных сессий; для
+    огромных репо используйте `tools.sandbox: "docker"` плюс
+    осторожный approval-mode.
