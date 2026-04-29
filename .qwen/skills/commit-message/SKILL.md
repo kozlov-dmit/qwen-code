@@ -1,59 +1,61 @@
 ---
 name: commit-message
-description: Generate a Conventional Commits message from the currently staged changes. Triggers on "commit message", "conventional commit", "сгенерируй коммит". Returns a message ready to paste into `git commit -m`.
+description: Сгенерировать сообщение коммита в формате Conventional Commits по staged-изменениям. Триггеры — "сгенерируй коммит", "commit message", "conventional commit", "напиши сообщение коммита". Возвращает готовое сообщение для `git commit -m`.
 argument-hint: '[<scope-hint>]'
 allowedTools:
   - read_file
   - shell
 ---
 
-# Commit message generator
+# Генератор сообщения коммита
 
-Produces a single Conventional Commits message describing the staged diff.
+Создаёт одно сообщение в формате Conventional Commits по staged-диффу.
 
-## Inputs
+## Вход
 
-- `args` (optional): scope hint, e.g. `cli`, `core`, `docs`. If omitted —
-  inferred from changed paths.
+- `args` (опционально): подсказка scope, например `cli`, `core`, `docs`.
+  Если не указан — выводится из путей изменённых файлов.
 
-## Steps
+## Шаги
 
-1. `git diff --cached --stat` and `git diff --cached` to read staged changes.
-   If nothing is staged — stop and tell the user to `git add` first.
-2. Classify the change type by content:
-   - `feat` — new user-visible capability
-   - `fix` — bug fix
-   - `docs` — only docs / comments
-   - `refactor` — no behavior change
+1. `git diff --cached --stat` и `git diff --cached`. Если staged-пусто —
+   остановиться и попросить пользователя сделать `git add`.
+2. Определить тип изменения по содержимому:
+   - `feat` — новая видимая пользователю возможность
+   - `fix` — исправление бага
+   - `docs` — только документация / комментарии
+   - `refactor` — без изменения поведения
    - `perf`, `test`, `build`, `ci`, `chore`
-3. Pick a scope: hint > top changed dir > omit.
-4. Compose the subject (≤ 72 chars, imperative mood, no trailing period).
-5. If the change touches > 5 files or has non-trivial logic — add a body
-   with 1–3 short bullets (WHY, not WHAT).
-6. Detect breaking changes (removed public API, schema migration, env var
-   rename) → add `BREAKING CHANGE:` footer.
+3. Выбрать scope: подсказка > верхняя изменённая директория > опустить.
+4. Составить subject (≤ 72 символов, повелительное наклонение, без точки
+   в конце).
+5. Если изменено > 5 файлов или логика нетривиальная — добавить тело из
+   1–3 коротких пунктов (WHY, не WHAT).
+6. Обнаружить breaking changes (удалён публичный API, миграция схемы,
+   переименование env-переменной) — добавить футер
+   `BREAKING CHANGE:`.
 
-## Output
+## Вывод
 
-Return exactly one fenced block, ready to paste:
+Один fenced-блок, готовый к вставке:
 
 ```
 <type>(<scope>): <subject>
 
-<optional body bullets>
+<опциональные пункты тела>
 
-<optional BREAKING CHANGE: ...>
+<опционально BREAKING CHANGE: ...>
 ```
 
-Then a one-line preview of the `git commit` command.
+Затем — однострочное превью команды `git commit`.
 
-## Why no subagent here
+## Почему здесь нет субагента
 
-Single short task on already-fetched diff. Spawning a subagent costs more
-in latency and tokens than it saves — keep it inline.
+Маленькая разовая задача на уже прочитанном `git diff`. Запуск субагента
+обойдётся дороже по времени и токенам, чем сэкономит. Делать inline.
 
-## Notes
+## Замечания
 
-- Never invent issue numbers or co-authors.
-- If the diff mixes unrelated concerns — refuse and ask to split into
-  multiple commits.
+- Не выдумывать номера issues и co-authors.
+- Если diff смешивает несвязанные правки — отказаться и попросить
+  разбить на несколько коммитов.
