@@ -1,7 +1,7 @@
 ---
 name: refactor-stepwise
-description: Refactor code in small verifiable steps with tests passing between each. Triggers on "refactor", "extract module", "rename across project", "split this function". Produces a step plan, then executes it iteratively.
-argument-hint: '<target-file-or-symbol>'
+description: Рефакторинг небольшими проверяемыми шагами с зелёными тестами между ними. Триггеры — "рефакторинг", "refactor", "вынеси модуль", "переименуй по проекту", "разбей функцию", "extract module". Сначала строит план шагов, потом исполняет его итеративно.
+argument-hint: '<целевой-файл-или-символ>'
 allowedTools:
   - read_file
   - glob
@@ -11,69 +11,72 @@ allowedTools:
   - shell
 ---
 
-# Stepwise refactor
+# Пошаговый рефакторинг
 
-Behavior-preserving refactor in small commits, each verified by tests.
+Поведение-сохраняющий рефакторинг маленькими коммитами, каждый шаг
+проверяется тестами.
 
-## Inputs
+## Вход
 
-- `args`: target file, symbol, or short description ("split UserService").
+- `args`: целевой файл, символ или короткое описание ("разбить
+  UserService").
 
-## Steps
+## Шаги
 
-1. **Read the target** and immediate neighbours. Note public surface and
-   any tests covering it.
-2. **Delegate the impact map** to a `refactor-analyst` subagent (see
-   `## Delegation`). Wait for its report before planning.
-3. **Plan**: decompose into 2–6 atomic steps. Each step must:
-   - keep the public API behavior unchanged,
-   - be independently revertable,
-   - have a clear "tests still green" check.
-4. **For each step**:
-   1. apply the edit,
-   2. run focused tests (`shell` — pick the narrowest test command),
-   3. if green → continue; if red → revert and re-plan.
-5. After the last step — full test run, then summary of what changed.
+1. **Прочитать цель** и ближайших соседей. Зафиксировать публичную
+   поверхность и тесты, покрывающие её.
+2. **Делегировать карту влияния** субагенту `refactor-analyst` (см.
+   `## Делегирование`). Дождаться его отчёта перед планированием.
+3. **План**: декомпозиция на 2–6 атомарных шагов. Каждый шаг должен:
+   - сохранять поведение публичного API,
+   - откатываться независимо,
+   - иметь чёткий критерий «тесты всё ещё зелёные».
+4. **На каждый шаг**:
+   1. внести правку,
+   2. запустить узкие тесты (`shell` — самая узкая команда тестов),
+   3. зелёные → дальше; красные → откатить и перепланировать.
+5. После последнего шага — полный прогон тестов, затем сводка
+   изменений.
 
-## Delegation
+## Делегирование
 
-One subagent, **named** `refactor-analyst`, **read-only**:
+Один субагент, **named** `refactor-analyst`, **read-only**:
 
-| Why isolated | Why not parallel |
+| Зачем изолировать | Почему не параллелить |
 |---|---|
-| Impact analysis (call-sites, transitive imports, tests touching the symbol) is large in tokens but produces a small report. Doing it in a separate context keeps the main session focused on edits. | The actual refactor is sequential — each step depends on the previous file state. Parallelizing edits would race on the same files. |
+| Анализ влияния (callers, транзитивные импорты, тесты на символ) большой по токенам, но даёт маленький отчёт. Отдельный контекст не засоряет основную сессию. | Сами правки строго последовательные — каждый шаг зависит от состояния файла после предыдущего. Параллельные правки конфликтуют на одних и тех же файлах. |
 
-Send the analyst:
-- target symbol/file,
-- list of test directories,
-- request: "return JSON with `callers[]`, `tests[]`, `risk_notes[]`".
+Передать аналитику:
+- целевой символ/файл,
+- список тестовых директорий,
+- запрос: «вернуть JSON с полями `callers[]`, `tests[]`, `risk_notes[]`».
 
-Skip delegation only if the impact is obviously local (single file, no
-external imports, < 50 lines).
+Пропустить делегирование можно только если влияние очевидно локальное
+(один файл, нет внешних импортов, < 50 строк).
 
-## Output
+## Вывод
 
 ```
-## Refactor plan: <target>
+## План рефакторинга: <target>
 
-Impact (from refactor-analyst):
-- callers: N files, K sites
-- covering tests: ...
-- risks: ...
+Влияние (от refactor-analyst):
+- callers: N файлов, K мест
+- покрывающие тесты: ...
+- риски: ...
 
-Steps:
+Шаги:
 1. ...
 2. ...
 
-Execution:
-- step 1: applied, tests green (npm test -- src/foo)
-- step 2: ...
+Исполнение:
+- шаг 1: применён, тесты зелёные (npm test -- src/foo)
+- шаг 2: ...
 ```
 
-## Notes
+## Замечания
 
-- Never combine refactor with feature changes in the same skill run.
-- If a step turns out to need a behavior change — stop, surface it, ask
-  the user to confirm before proceeding.
-- Commit after each green step (or at least at safe checkpoints) so a
-  bad step can be rolled back individually.
+- Никогда не совмещать рефакторинг и фичу в одном запуске skill'а.
+- Если шаг требует изменения поведения — остановиться, сообщить
+  пользователю, спросить подтверждение перед продолжением.
+- Коммитить после каждого зелёного шага (или хотя бы в безопасных
+  чекпоинтах), чтобы плохой шаг можно было откатить отдельно.
