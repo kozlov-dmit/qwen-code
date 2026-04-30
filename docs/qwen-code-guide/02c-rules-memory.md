@@ -47,6 +47,34 @@
 - `memory.enableManagedAutoDream` (по умолчанию `false`) — авто-консолидация
   накопленной памяти.
 
+## Подсказка skills через `QWEN.md`
+
+`QWEN.md` — удобное место, чтобы напомнить агенту про важные skills,
+которые он иначе пытается заменить ручной работой. Несколько шаблонов:
+
+```markdown
+## Skills routing
+- For any task that mentions «release», «changelog», «bump version» —
+  ALWAYS invoke `/release-checklist` skill before editing files.
+- Reproducing a bug? Use `/bugfix` (reproduce-first). Не пытайся чинить
+  напрямую без воспроизведения.
+- E2E / browser-сценарии — только через `/e2e-testing`, не запускай
+  Playwright руками.
+- Вопросы про сам Qwen Code, settings.json, permissions — `/qc-helper`.
+```
+
+Что именно работает:
+
+- **Глаголы императива** (`ALWAYS invoke`, `Do NOT edit until …`) —
+  модель воспринимает их как правило, а не пожелание.
+- **Привязка к триггер-словам.** Перечислите фразы пользователя,
+  которые должны включать конкретный skill — это дублирует триггеры
+  из `description` и повышает точность выбора.
+- **Список «не делай сам».** Явно запрещайте обходные пути:
+  «не запускай pytest вручную — используй `/e2e-testing`».
+- **Регулярный `/memory refresh`** после правок и проверка через
+  `/memory show`, что напоминалки реально загружены.
+
 ## Референс
 
 В корне самого `QwenLM/qwen-code` лежит подтверждённый `AGENTS.md` с
