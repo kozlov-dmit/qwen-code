@@ -83,6 +83,9 @@
 (`design/`, `e2e-tests/`, `pr-drafts/` и т. п.). Хороший шаблон для своих
 правил.
 
+> Полная картина того, что и когда попадает в контекст модели —
+> в разделе [6. Как Qwen Code заполняет контекст](./06-context-loading.md).
+
 ## Полезные ссылки
 
 - [docs/users/configuration/settings.md](https://github.com/QwenLM/qwen-code/blob/main/docs/users/configuration/settings.md)

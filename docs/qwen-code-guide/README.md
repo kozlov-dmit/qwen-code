@@ -17,6 +17,7 @@ QwenLM, оптимизирован под модели Qwen). Все факты 
 3. [Best practices](./03-best-practices.md)
 4. [Готовые компоненты, которые реально помогают](./04-recommended.md)
 5. [Советы по организации и настройке](./05-organization.md)
+6. [Как Qwen Code заполняет контекст](./06-context-loading.md)
 
 Источники и как верифицировать у себя — [`10-sources.md`](./10-sources.md).
 
